@@ -1,0 +1,789 @@
+
+DBMS PRACTICAL - SET I
+Answers (SQL / PL/SQL / MongoDB)
+Generated: Comprehensive query solutions for each question set in the uploaded PDF.
+
+-------------------------------------------------------------------------------
+SET 1 — MYSQL: COMPANY DATABASE (Emp, Dept)
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE dept(deptno INT PRIMARY KEY, deptname VARCHAR(100), location VARCHAR(100));
+CREATE TABLE emp(eno INT PRIMARY KEY, ename VARCHAR(100), job VARCHAR(50), hiredate DATE, salary DECIMAL(12,2), commission DECIMAL(12,2), deptno INT, FOREIGN KEY (deptno) REFERENCES dept(deptno));
+
+Queries:
+1. -- Max salary paid to salesman
+   SELECT MAX(salary) AS max_salary_salesman FROM emp WHERE LOWER(job) = 'salesman';
+
+2. -- Names of employees whose name starts with 'I'
+   SELECT ename FROM emp WHERE ename LIKE 'I%';
+
+3. -- Employees who joined before 30-sep-1981
+   SELECT * FROM emp WHERE hiredate < '1981-09-30';
+
+4. -- Employees in descending order of basic salary
+   SELECT * FROM emp ORDER BY salary DESC;
+
+5. -- Number of employees & avg salary in dept 20
+   SELECT COUNT(*) AS emp_count, AVG(salary) AS avg_salary FROM emp WHERE deptno = 20;
+
+6. -- Avg and min salary hiredate-wise for dept 10
+   SELECT hiredate, AVG(salary) AS avg_salary, MIN(salary) AS min_salary FROM emp WHERE deptno = 10 GROUP BY hiredate ORDER BY hiredate;
+
+7. -- Employee name and its department
+   SELECT e.ename, d.deptname FROM emp e LEFT JOIN dept d ON e.deptno = d.deptno;
+
+8. -- Total salary paid to each department
+   SELECT d.deptno, d.deptname, SUM(e.salary) AS total_salary FROM dept d LEFT JOIN emp e ON d.deptno = e.deptno GROUP BY d.deptno, d.deptname;
+
+9. -- Employee details working in 'Dev' department
+   SELECT e.* FROM emp e JOIN dept d ON e.deptno = d.deptno WHERE d.deptname = 'Dev';
+
+10. -- Update salary of all employees in deptno 10 by 5%
+    UPDATE emp SET salary = salary * 1.05 WHERE deptno = 10;
+
+-------------------------------------------------------------------------------
+SET 2 — Employee / Works / Company / Manages database
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE employee(employee_name VARCHAR(100) PRIMARY KEY, street VARCHAR(200), city VARCHAR(100));
+CREATE TABLE works(employee_name VARCHAR(100), company_name VARCHAR(100), salary DECIMAL(12,2), FOREIGN KEY (employee_name) REFERENCES employee(employee_name));
+CREATE TABLE company(company_name VARCHAR(100) PRIMARY KEY, city VARCHAR(100));
+CREATE TABLE manages(employee_name VARCHAR(100), manager_name VARCHAR(100));
+
+Queries:
+1. SELECT employee_name FROM works WHERE company_name = 'First Bank Corporation';
+
+2. SELECT e.employee_name FROM employee e WHERE e.employee_name NOT IN (SELECT w.employee_name FROM works w WHERE w.company_name = 'First Bank Corporation');
+
+3. -- Company that has most employees
+   SELECT company_name FROM works GROUP BY company_name ORDER BY COUNT(employee_name) DESC LIMIT 1;
+
+4. -- Companies located in every city in which Small Bank Corporation is located
+   -- Interpretation: companies that are in all cities where 'Small Bank Corporation' has presence.
+   SELECT c2.company_name FROM company c2 WHERE NOT EXISTS (
+       SELECT c1.city FROM company c1 WHERE c1.company_name = 'Small Bank Corporation' AND c1.city NOT IN (SELECT c3.city FROM company c3 WHERE c3.company_name = c2.company_name)
+   );
+
+   -- Alternative interpretation (relational division using works/company):
+   -- Find companies that operate in every city that 'Small Bank Corporation' operates in.
+   -- (Complex; depends on schema of company/branches).
+
+5. SELECT * FROM works WHERE salary > 10000;
+
+6. UPDATE works SET salary = salary * 1.10 WHERE company_name = 'First Bank Corporation';
+
+7. SELECT w.employee_name, m.manager_name FROM works w LEFT JOIN manages m ON w.employee_name = m.employee_name;
+
+8. SELECT e.employee_name, e.street, e.city FROM employee e JOIN works w ON e.employee_name = w.employee_name WHERE w.company_name = 'First Bank Corporation' AND w.salary > 10000;
+
+9. SELECT company_name FROM works GROUP BY company_name HAVING AVG(salary) > (SELECT AVG(salary) FROM works WHERE company_name = 'First Bank Corporation');
+
+-------------------------------------------------------------------------------
+SET 3 — Hotel/Room/Booking/Guest (Queries)
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE Hotel(HotelNo INT PRIMARY KEY, Name VARCHAR(200), City VARCHAR(100));
+CREATE TABLE Room(RoomNo INT, HotelNo INT, Type VARCHAR(50), Price DECIMAL(10,2), PRIMARY KEY (HotelNo, RoomNo), FOREIGN KEY (HotelNo) REFERENCES Hotel(HotelNo));
+CREATE TABLE Guest(GuestNo INT PRIMARY KEY, GuestName VARCHAR(200), GuestAddress VARCHAR(300));
+CREATE TABLE Booking(HotelNo INT, GuestNo INT, DateFrom DATE, DateTo DATE, RoomNo INT, PRIMARY KEY (HotelNo, GuestNo, DateFrom), FOREIGN KEY (HotelNo) REFERENCES Hotel(HotelNo), FOREIGN KEY (GuestNo) REFERENCES Guest(GuestNo));
+
+Queries:
+1. SELECT * FROM Hotel;
+
+2. SELECT COUNT(*) AS hotel_count FROM Hotel;
+
+3. SELECT r.Price, r.Type FROM Room r JOIN Hotel h ON r.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel';
+
+4. SELECT h.HotelNo, h.Name, COUNT(r.RoomNo) AS num_rooms FROM Hotel h LEFT JOIN Room r ON h.HotelNo = r.HotelNo GROUP BY h.HotelNo, h.Name;
+
+5. UPDATE Room SET Price = Price * 1.05;
+
+6. SELECT * FROM Hotel WHERE City = 'London';
+
+7. SELECT AVG(Price) AS avg_room_price FROM Room;
+
+8. -- Guests currently staying at Grosvenor Hotel (current date between DateFrom and DateTo)
+   SELECT DISTINCT g.* FROM Guest g JOIN Booking b ON g.GuestNo = b.GuestNo JOIN Hotel h ON b.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel' AND CURRENT_DATE BETWEEN b.DateFrom AND b.DateTo;
+
+9. SELECT h.HotelNo, h.Name, COUNT(r.RoomNo) AS rooms_in_london FROM Hotel h JOIN Room r ON h.HotelNo = r.HotelNo WHERE h.City = 'London' GROUP BY h.HotelNo, h.Name;
+
+10. CREATE VIEW Hotel_View AS SELECT h.*, COUNT(r.RoomNo) AS RoomsCount FROM Hotel h LEFT JOIN Room r ON h.HotelNo = r.HotelNo GROUP BY h.HotelNo;
+    SELECT * FROM Hotel_View;
+
+-------------------------------------------------------------------------------
+SET 4 — Hotel queries (repeated with revenue/occupied etc.)
+-------------------------------------------------------------------------------
+1. -- Total revenue per night from all double rooms
+   SELECT SUM(Price) AS total_revenue_per_night FROM Room WHERE LOWER(Type) = 'double';
+
+2. -- Details of all rooms at Grosvenor Hotel including guest name if occupied
+   SELECT r.*, g.GuestName FROM Room r JOIN Hotel h ON r.HotelNo = h.HotelNo LEFT JOIN Booking b ON b.HotelNo = r.HotelNo AND b.RoomNo = r.RoomNo AND CURRENT_DATE BETWEEN b.DateFrom AND b.DateTo LEFT JOIN Guest g ON b.GuestNo = g.GuestNo WHERE h.Name = 'Grosvenor Hotel';
+
+3. -- Average number of bookings for each hotel in April (any year or specific year)
+   -- For bookings whose DateFrom in April (month = 4)
+   SELECT h.HotelNo, h.Name, AVG(monthly_counts.count_for_april) AS avg_bookings_april
+   FROM Hotel h LEFT JOIN (
+       SELECT HotelNo, COUNT(*) AS count_for_april, EXTRACT(YEAR FROM DateFrom) AS yr FROM Booking WHERE EXTRACT(MONTH FROM DateFrom) = 4 GROUP BY HotelNo, EXTRACT(YEAR FROM DateFrom)
+   ) monthly_counts ON h.HotelNo = monthly_counts.HotelNo GROUP BY h.HotelNo, h.Name;
+
+4. -- Create index example (MySQL)
+   CREATE INDEX idx_room_type_price ON Room(Type, Price);
+   -- Then run an explain on a sample query to show performance:
+   EXPLAIN SELECT * FROM Room WHERE Type = 'double' AND Price < 40 ORDER BY Price ASC;
+
+5. SELECT * FROM Hotel;
+
+6. SELECT * FROM Hotel WHERE City = 'London';
+
+7. UPDATE Room SET Price = Price * 1.05;
+
+8. SELECT h.HotelNo, COUNT(r.RoomNo) AS rooms_in_london FROM Hotel h JOIN Room r ON h.HotelNo = r.HotelNo WHERE h.City = 'London' GROUP BY h.HotelNo;
+
+9. SELECT * FROM Room WHERE (LOWER(Type) = 'double' OR LOWER(Type) = 'family') AND Price < 40 ORDER BY Price ASC;
+
+-------------------------------------------------------------------------------
+SET 5 — Hotel queries (another repeat variation)
+-------------------------------------------------------------------------------
+1. SELECT * FROM Hotel;
+
+2. SELECT COUNT(*) FROM Hotel;
+
+3. SELECT r.Price, r.Type FROM Room r JOIN Hotel h ON r.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel';
+
+4. SELECT h.HotelNo, COUNT(r.RoomNo) FROM Hotel h JOIN Room r ON h.HotelNo = r.HotelNo GROUP BY h.HotelNo;
+
+5. -- Guests currently staying at Grosvenor Hotel
+   SELECT DISTINCT g.* FROM Guest g JOIN Booking b ON g.GuestNo = b.GuestNo JOIN Hotel h ON b.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel' AND CURRENT_DATE BETWEEN b.DateFrom AND b.DateTo;
+
+6. SELECT * FROM Room WHERE (LOWER(Type) = 'double' OR LOWER(Type) = 'family') AND Price < 40 ORDER BY Price ASC;
+
+7. -- How many different guests have made bookings for August (any year or specific year)
+   SELECT COUNT(DISTINCT GuestNo) FROM Booking WHERE EXTRACT(MONTH FROM DateFrom) = 8;
+
+8. -- Total income from bookings for Grosvenor Hotel today (assume income = room price per night * nights)
+   -- If booking spans today, count price for that night.
+   SELECT SUM(r.Price) AS income_today FROM Booking b JOIN Room r ON b.HotelNo = r.HotelNo AND b.RoomNo = r.RoomNo JOIN Hotel h ON h.HotelNo = b.HotelNo WHERE h.Name = 'Grosvenor Hotel' AND CURRENT_DATE BETWEEN b.DateFrom AND b.DateTo;
+
+9. -- Most commonly booked room type for each hotel in London
+   SELECT h.HotelNo, h.Name, r.Type, COUNT(*) AS bookings FROM Booking b JOIN Room r ON b.HotelNo = r.HotelNo AND b.RoomNo = r.RoomNo JOIN Hotel h ON h.HotelNo = b.HotelNo WHERE h.City = 'London' GROUP BY h.HotelNo, h.Name, r.Type ORDER BY h.HotelNo, COUNT(*) DESC;
+
+10. UPDATE Room SET Price = Price * 1.05;
+
+-------------------------------------------------------------------------------
+SET 6 — Hotel queries (more variations)
+-------------------------------------------------------------------------------
+1. SELECT * FROM Hotel;
+
+2. SELECT * FROM Hotel WHERE City = 'London';
+
+3. SELECT DISTINCT g.* FROM Guest g JOIN Booking b ON g.GuestNo = b.GuestNo JOIN Hotel h ON b.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel' AND CURRENT_DATE BETWEEN b.DateFrom AND b.DateTo;
+
+4. SELECT g.GuestName, g.GuestAddress FROM Guest g JOIN Booking b ON g.GuestNo = b.GuestNo JOIN Hotel h ON h.HotelNo = b.HotelNo WHERE h.City = 'London' ORDER BY g.GuestName;
+
+5. SELECT * FROM Booking WHERE DateTo IS NULL OR DateTo = '';
+
+6. SELECT COUNT(*) FROM Hotel;
+
+7. -- Rooms currently unoccupied at Grosvenor Hotel
+   SELECT r.* FROM Room r JOIN Hotel h ON r.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel' AND (r.RoomNo NOT IN (SELECT RoomNo FROM Booking b WHERE b.HotelNo = r.HotelNo AND CURRENT_DATE BETWEEN b.DateFrom AND COALESCE(b.DateTo, CURRENT_DATE)));
+
+8. -- Lost income from unoccupied rooms at each hotel today (sum of price for unoccupied rooms)
+   SELECT h.HotelNo, h.Name, SUM(r.Price) AS lost_income_today FROM Hotel h JOIN Room r ON h.HotelNo = r.HotelNo WHERE (r.RoomNo NOT IN (SELECT RoomNo FROM Booking b WHERE b.HotelNo = r.HotelNo AND CURRENT_DATE BETWEEN b.DateFrom AND COALESCE(b.DateTo, CURRENT_DATE))) GROUP BY h.HotelNo, h.Name;
+
+9. CREATE INDEX idx_booking_datefrom ON Booking(DateFrom);
+   -- Show performance with EXPLAIN on a query that filters by DateFrom.
+
+10. CREATE VIEW Current_Grosvenor_Bookings AS SELECT g.*, b.* FROM Guest g JOIN Booking b ON g.GuestNo = b.GuestNo JOIN Hotel h ON b.HotelNo = h.HotelNo WHERE h.Name = 'Grosvenor Hotel' AND CURRENT_DATE BETWEEN b.DateFrom AND b.DateTo;
+    SELECT * FROM Current_Grosvenor_Bookings;
+
+-------------------------------------------------------------------------------
+SET 7 — Project / Employee / Assigned-To
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE Project(project_id VARCHAR(20) PRIMARY KEY, proj_name VARCHAR(200), chief_arch VARCHAR(200));
+CREATE TABLE Employee(Emp_id VARCHAR(20) PRIMARY KEY, Emp_name VARCHAR(200));
+CREATE TABLE Assigned_To(Project_id VARCHAR(20), Emp_id VARCHAR(20), FOREIGN KEY (Project_id) REFERENCES Project(project_id), FOREIGN KEY (Emp_id) REFERENCES Employee(Emp_id));
+
+Queries:
+1. SELECT e.* FROM Employee e JOIN Assigned_To a ON e.Emp_id = a.Emp_id WHERE a.Project_id = 'C353';
+
+2. SELECT a.Emp_id FROM Assigned_To a WHERE a.Project_id = 'C353';
+
+3. SELECT e.* FROM Employee e JOIN Assigned_To a ON e.Emp_id = a.Emp_id JOIN Project p ON a.Project_id = p.project_id WHERE p.proj_name = 'Database';
+
+4. SELECT e.* FROM Employee e WHERE e.Emp_id IN (SELECT Emp_id FROM Assigned_To WHERE Project_id = 'C353') AND e.Emp_id IN (SELECT Emp_id FROM Assigned_To WHERE Project_id = 'C354');
+
+5. SELECT Emp_id FROM Employee WHERE Emp_id NOT IN (SELECT Emp_id FROM Assigned_To WHERE Project_id = 'C453');
+
+-------------------------------------------------------------------------------
+SET 8 — Employee / Position / Duty_allocation
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE Employee(emp_no INT PRIMARY KEY, name VARCHAR(200), skill VARCHAR(100), pay_rate DECIMAL(10,2));
+CREATE TABLE Position(posting_no INT PRIMARY KEY, skill VARCHAR(100));
+CREATE TABLE Duty_allocation(posting_no INT, emp_no INT, day DATE, shift VARCHAR(20), FOREIGN KEY (posting_no) REFERENCES Position(posting_no), FOREIGN KEY (emp_no) REFERENCES Employee(emp_no));
+
+Queries:
+1. -- Duty allocation details for emp_no 123461 for April 1986
+   SELECT * FROM Duty_allocation WHERE emp_no = 123461 AND EXTRACT(MONTH FROM day) = 4 AND EXTRACT(YEAR FROM day) = 1986;
+
+2. -- Find shift details for Employee 'xyz'
+   SELECT d.shift, d.day, p.posting_no FROM Duty_allocation d JOIN Employee e ON d.emp_no = e.emp_no JOIN Position p ON d.posting_no = p.posting_no WHERE e.name = 'xyz';
+
+3. -- Employees whose pay-rate >= pay-rate of employee 'xyz'
+   SELECT e.* FROM Employee e WHERE e.pay_rate >= (SELECT pay_rate FROM Employee WHERE name = 'xyz' LIMIT 1);
+
+4. -- Names and pay rates of employees with emp_no < 123460 whose pay > pay of at least one employee with emp_no >= 123460
+   SELECT e1.name, e1.pay_rate FROM Employee e1 WHERE e1.emp_no < 123460 AND e1.pay_rate > (SELECT MIN(e2.pay_rate) FROM Employee e2 WHERE e2.emp_no >= 123460);
+
+5. -- Employees assigned to all positions that require 'Chef' skill (relational division)
+   SELECT e.emp_no, e.name FROM Employee e WHERE NOT EXISTS (
+       SELECT p.posting_no FROM Position p WHERE LOWER(p.skill) = 'chef' AND p.posting_no NOT IN (SELECT da.posting_no FROM Duty_allocation da WHERE da.emp_no = e.emp_no)
+   );
+
+6. -- Employees with lowest pay_rate
+   SELECT * FROM Employee WHERE pay_rate = (SELECT MIN(pay_rate) FROM Employee);
+
+7. -- Employee numbers of employees working on at least two dates
+   SELECT emp_no FROM Duty_allocation GROUP BY emp_no HAVING COUNT(DISTINCT day) >= 2;
+
+8. -- Names of employees with skill 'Chef' who are assigned a duty
+   SELECT DISTINCT e.name FROM Employee e JOIN Duty_allocation da ON e.emp_no = da.emp_no WHERE LOWER(e.skill) = 'chef';
+
+9. -- Employees not assigned a duty
+   SELECT * FROM Employee WHERE emp_no NOT IN (SELECT emp_no FROM Duty_allocation);
+
+10. -- Count of different employees on each shift
+    SELECT shift, COUNT(DISTINCT emp_no) AS employees_count FROM Duty_allocation GROUP BY shift;
+
+-------------------------------------------------------------------------------
+SET 9 — Deposit / Branch / Customers / Borrow
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE Branch(bname VARCHAR(100) PRIMARY KEY, city VARCHAR(100));
+CREATE TABLE Customers(cname VARCHAR(100) PRIMARY KEY, city VARCHAR(100));
+CREATE TABLE Deposit(actno INT PRIMARY KEY, cname VARCHAR(100), bname VARCHAR(100), amount DECIMAL(12,2), adate DATE, FOREIGN KEY (cname) REFERENCES Customers(cname), FOREIGN KEY (bname) REFERENCES Branch(bname));
+CREATE TABLE Borrow(loanno INT PRIMARY KEY, cname VARCHAR(100), bname VARCHAR(100), amount DECIMAL(12,2));
+
+Sample Queries:
+1. SELECT cname FROM Deposit WHERE amount > 4000;
+
+2. SELECT adate FROM Deposit WHERE cname = 'Anil';
+
+3. SELECT actno, amount FROM Deposit WHERE adate BETWEEN '1996-12-01' AND '1997-05-01';
+
+4. SELECT AVG(amount) AS avg_balance FROM Deposit WHERE bname = 'Perryridge';
+
+5. SELECT bname FROM Deposit GROUP BY bname HAVING AVG(amount) > 1200;
+
+6. DELETE FROM Deposit WHERE amount < 5000;
+
+7. CREATE VIEW deposit_view AS SELECT * FROM Deposit;
+
+-------------------------------------------------------------------------------
+SET 10 — Deposit/Branch/Customers/Borrow (another variation)
+-------------------------------------------------------------------------------
+a. -- Names of all branches located in Bombay
+   SELECT bname FROM Branch WHERE city = 'Bombay' OR city = 'Mumbai';
+
+b. -- Display account no. and amount of depositors
+   SELECT actno, amount FROM Deposit;
+
+c. -- Update city of customer Anil from Pune to Mumbai
+   UPDATE Customers SET city = 'Mumbai' WHERE cname = 'Anil';
+
+d. -- Number of depositors in the bank
+   SELECT COUNT(DISTINCT cname) FROM Deposit;
+
+e. -- Min and Max amount of customers
+   SELECT MIN(amount) AS min_amount, MAX(amount) AS max_amount FROM Deposit;
+
+f. -- Create an index on deposit table (example)
+   CREATE INDEX idx_deposit_amount ON Deposit(amount);
+
+g. -- Create view on Borrow table
+   CREATE VIEW borrow_view AS SELECT * FROM Borrow;
+
+-------------------------------------------------------------------------------
+SET 11 — Deposit set (more operations)
+-------------------------------------------------------------------------------
+a. SELECT adate FROM Deposit WHERE cname = 'Anil';
+
+b. -- Modify size of attribute amount in Deposit (SQL example for MySQL)
+   ALTER TABLE Deposit MODIFY amount DECIMAL(15,2);
+
+c. SELECT cname FROM Customers WHERE city = 'Pune';
+
+d. SELECT city FROM Branch WHERE bname = 'KAROLBAGH';
+
+e. SELECT COUNT(*) FROM Customers;
+
+f. DELETE FROM Customers WHERE cname = 'Sunil';
+
+g. CREATE VIEW deposit_view AS SELECT * FROM Deposit;
+
+-------------------------------------------------------------------------------
+SET 12 — Deposit/Borrow advanced queries
+-------------------------------------------------------------------------------
+1. -- Customer name living city Bombay and branch city Nagpur
+   SELECT d.cname FROM Deposit d JOIN Customers c ON d.cname = c.cname JOIN Branch b ON d.bname = b.bname WHERE c.city = 'Bombay' AND b.city = 'Nagpur';
+
+2. -- Customer name having same living city as their branch city
+   SELECT DISTINCT d.cname FROM Deposit d JOIN Customers c ON d.cname = c.cname JOIN Branch b ON d.bname = b.bname WHERE c.city = b.city;
+
+3. -- Customers who are borrowers as well as depositors and living city Nagpur
+   SELECT DISTINCT d.cname FROM Deposit d JOIN Borrow br ON d.cname = br.cname JOIN Customers c ON d.cname = c.cname WHERE c.city = 'Nagpur';
+
+4. -- Borrower names having deposit amount > 1000 and loan amount > 2000
+   SELECT DISTINCT br.cname FROM Borrow br JOIN Deposit d ON br.cname = d.cname WHERE d.amount > 1000 AND br.amount > 2000;
+
+5. -- Customer name living in the city where branch of depositor Sunil is located
+   SELECT c2.cname FROM Customers c2 WHERE c2.city = (SELECT b.city FROM Branch b JOIN Deposit d ON b.bname = d.bname WHERE d.cname = 'Sunil' LIMIT 1);
+
+6. CREATE INDEX idx_deposit_cname ON Deposit(cname);
+
+-------------------------------------------------------------------------------
+SET 13 — Publisher / Book / Author / Review
+-------------------------------------------------------------------------------
+Assume tables:
+CREATE TABLE PUBLISHER(PID INT PRIMARY KEY, PNAME VARCHAR(200), ADDRESS VARCHAR(300), STATE VARCHAR(50), PHONE VARCHAR(50), EMAILID VARCHAR(100));
+CREATE TABLE BOOK(ISBN BIGINT PRIMARY KEY, BOOK_TITLE VARCHAR(300), CATEGORY VARCHAR(100), PRICE DECIMAL(10,2), COPYRIGHT_DATE DATE, YEAR INT, PAGE_COUNT INT, PID INT, FOREIGN KEY (PID) REFERENCES PUBLISHER(PID));
+CREATE TABLE AUTHOR(AID INT PRIMARY KEY, ANAME VARCHAR(200), STATE VARCHAR(50), CITY VARCHAR(100), ZIP VARCHAR(20), PHONE VARCHAR(50), URL VARCHAR(200));
+CREATE TABLE AUTHOR_BOOK(AID INT, ISBN BIGINT, FOREIGN KEY (AID) REFERENCES AUTHOR(AID), FOREIGN KEY (ISBN) REFERENCES BOOK(ISBN));
+CREATE TABLE REVIEW(RID INT PRIMARY KEY, ISBN BIGINT, RATING INT, FOREIGN KEY (ISBN) REFERENCES BOOK(ISBN));
+
+Queries:
+1. SELECT city, phone, url FROM AUTHOR WHERE aname = 'CHETAN BHAGAT';
+
+2. SELECT b.BOOK_TITLE, r.RID, r.RATING FROM BOOK b JOIN REVIEW r ON b.ISBN = r.ISBN;
+
+3. SELECT b.BOOK_TITLE, b.PRICE, a.ANAME, a.URL FROM BOOK b JOIN AUTHOR_BOOK ab ON b.ISBN = ab.ISBN JOIN AUTHOR a ON ab.AID = a.AID JOIN PUBLISHER p ON b.PID = p.PID WHERE p.PNAME = 'MEHTA';
+
+4. UPDATE PUBLISHER SET PHONE = '123456' WHERE PNAME = 'MEHTA';
+
+5. SELECT p.PID, AVG(b.PRICE) AS avg_price, MAX(b.PRICE) AS max_price, MIN(b.PRICE) AS min_price FROM BOOK b JOIN PUBLISHER p ON b.PID = p.PID GROUP BY p.PID;
+
+6. DELETE FROM BOOK WHERE PAGE_COUNT < 100;
+
+7. SELECT * FROM AUTHOR WHERE CITY = 'Pune' AND ANAME LIKE 'C%';
+8. SELECT * FROM AUTHOR WHERE CITY = (SELECT CITY FROM AUTHOR WHERE ANAME = 'Korth' LIMIT 1);
+
+9. -- Procedure to update page count
+   DELIMITER $$
+   CREATE PROCEDURE update_pagecount(IN p_isbn BIGINT, IN new_page INT)
+   BEGIN
+     UPDATE BOOK SET PAGE_COUNT = new_page WHERE ISBN = p_isbn;
+   END$$
+   DELIMITER ;
+
+10. -- Function that returns price of book with given ISBN (MySQL)
+    DELIMITER $$
+    CREATE FUNCTION get_price(p_isbn BIGINT) RETURNS DECIMAL(10,2) DETERMINISTIC
+    BEGIN
+      DECLARE p_price DECIMAL(10,2);
+      SELECT PRICE INTO p_price FROM BOOK WHERE ISBN = p_isbn LIMIT 1;
+      RETURN p_price;
+    END$$
+    DELIMITER ;
+
+-------------------------------------------------------------------------------
+SET 14 — PL/SQL (Stud attendance & Account withdrawal example)
+-------------------------------------------------------------------------------
+14(a) PL/SQL block: check attendance, update status, handle exceptions
+-- Oracle PL/SQL example
+DECLARE
+  v_roll NUMBER := &roll_no;
+  v_att NUMBER;
+BEGIN
+  SELECT Att INTO v_att FROM Stud WHERE Roll = v_roll;
+  IF v_att < 75 THEN
+    UPDATE Stud SET Status = 'D' WHERE Roll = v_roll;
+    DBMS_OUTPUT.PUT_LINE('Term not granted');
+  ELSE
+    UPDATE Stud SET Status = 'ND' WHERE Roll = v_roll;
+    DBMS_OUTPUT.PUT_LINE('Term granted');
+  END IF;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('No student with roll ' || v_roll);
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+14(b) PL/SQL block: withdrawal with user-defined exception
+DECLARE
+  CURR_BAL account_master.balance%TYPE;
+  withdraw_amt NUMBER := &withdraw_amt;
+  acct_id NUMBER := &acct_id;
+  insufficient_balance EXCEPTION;
+BEGIN
+  SELECT balance INTO CURR_BAL FROM account_master WHERE account_id = acct_id;
+  IF withdraw_amt > CURR_BAL THEN
+    RAISE insufficient_balance;
+  ELSE
+    UPDATE account_master SET balance = balance - withdraw_amt WHERE account_id = acct_id;
+    DBMS_OUTPUT.PUT_LINE('Withdrawal successful');
+  END IF;
+EXCEPTION
+  WHEN insufficient_balance THEN
+    DBMS_OUTPUT.PUT_LINE('Error: Insufficient funds');
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('Account not found');
+END;
+/
+
+-------------------------------------------------------------------------------
+SET 15 — PL/SQL user-defined exception / library fine example
+-------------------------------------------------------------------------------
+15(a) -- Raise user defined exception when bal_due < 0
+DECLARE
+  v_bal NUMBER;
+  bal_violation EXCEPTION;
+BEGIN
+  SELECT bal_due INTO v_bal FROM client_master WHERE client_id = &cid;
+  IF v_bal < 0 THEN
+    RAISE bal_violation;
+  END IF;
+EXCEPTION
+  WHEN bal_violation THEN
+    DBMS_OUTPUT.PUT_LINE('Business rule violated: bal_due < 0');
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('Client not found');
+END;
+/
+
+15(b) -- Borrow/Fine block
+DECLARE
+  v_roll NUMBER := &roll_no;
+  v_name VARCHAR2(200) := '&name_of_book';
+  v_issue_date DATE;
+  v_days NUMBER;
+  v_fine_amt NUMBER := 0;
+BEGIN
+  SELECT DateOfIssue INTO v_issue_date FROM Borrow WHERE Roll_no = v_roll AND NameofBook = v_name AND Status = 'I';
+  v_days := TRUNC(SYSDATE) - v_issue_date;
+  IF v_days BETWEEN 15 AND 30 THEN
+    v_fine_amt := (v_days - 15) * 5;
+  ELSIF v_days > 30 THEN
+    v_fine_amt := v_days * 50;
+  ELSE
+    v_fine_amt := 0;
+  END IF;
+  UPDATE Borrow SET Status = 'R' WHERE Roll_no = v_roll AND NameofBook = v_name;
+  IF v_fine_amt > 0 THEN
+    INSERT INTO Fine(Roll_no, Date, Amt) VALUES(v_roll, SYSDATE, v_fine_amt);
+  END IF;
+  DBMS_OUTPUT.PUT_LINE('Book returned. Fine = ' || v_fine_amt);
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('No matching borrow record');
+END;
+/
+
+-------------------------------------------------------------------------------
+SET 16 — Cursors (Any Two)
+-------------------------------------------------------------------------------
+16(a) -- Implicit cursor: Reactivate inactive accounts inactive for 365 days (Oracle PL/SQL)
+DECLARE
+  v_rows NUMBER;
+BEGIN
+  UPDATE account_master SET status = 'ACTIVE' WHERE last_txn_date <= SYSDATE - 365;
+  v_rows := SQL%ROWCOUNT;
+  IF v_rows > 0 THEN
+    DBMS_OUTPUT.PUT_LINE(v_rows || ' accounts activated.');
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('No accounts to activate.');
+  END IF;
+END;
+/
+
+16(b) -- Increase salary by 10% for employees with salary < org avg and log into increment_salary table
+DECLARE
+  v_avg NUMBER;
+BEGIN
+  SELECT AVG(salary) INTO v_avg FROM employees;
+  FOR rec IN (SELECT emp_id, salary FROM employees WHERE salary < v_avg) LOOP
+    UPDATE employees SET salary = salary * 1.10 WHERE emp_id = rec.emp_id;
+    INSERT INTO increment_salary(emp_id, old_salary, new_salary, inc_date) VALUES(rec.emp_id, rec.salary, rec.salary * 1.10, SYSDATE);
+  END LOOP;
+  COMMIT;
+END;
+/
+
+16(c) -- Explicit cursor: mark detained students and log in D_Stud
+DECLARE
+  CURSOR c_students IS SELECT roll, att FROM stud21;
+  v_roll NUMBER; v_att NUMBER;
+BEGIN
+  FOR r IN c_students LOOP
+    IF r.att < 75 THEN
+      UPDATE stud21 SET status = 'D' WHERE roll = r.roll;
+      INSERT INTO D_Stud(roll, att, status_date) VALUES(r.roll, r.att, SYSDATE);
+    END IF;
+  END LOOP;
+  COMMIT;
+END;
+/
+
+-------------------------------------------------------------------------------
+SET 17 — Cursors (Any Two) - additional examples
+-------------------------------------------------------------------------------
+17(a) -- Same as 16(a) (implicit cursor) - see 16(a).
+
+17(b) -- Parameterized cursor to merge N_RollCall into O_RollCall
+DECLARE
+  CURSOR c_new(rc_roll NUMBER, rc_name VARCHAR2) IS SELECT roll, name FROM N_RollCall WHERE roll = rc_roll;
+BEGIN
+  FOR rec IN (SELECT roll, name FROM N_RollCall) LOOP
+    BEGIN
+      INSERT INTO O_RollCall(roll, name) VALUES(rec.roll, rec.name);
+    EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+      NULL; -- skip if already exists
+    END;
+  END LOOP;
+  COMMIT;
+END;
+/
+
+17(c) -- Parameterized cursor to compute dept-wise avg salary and insert into dept_salary
+DECLARE
+  CURSOR c_dept IS SELECT DISTINCT d_no FROM EMP;
+  v_avg NUMBER;
+BEGIN
+  FOR r IN c_dept LOOP
+    SELECT AVG(salary) INTO v_avg FROM EMP WHERE d_no = r.d_no;
+    INSERT INTO dept_salary(d_no, Avg_salary) VALUES(r.d_no, v_avg);
+  END LOOP;
+  COMMIT;
+END;
+/
+
+-------------------------------------------------------------------------------
+SET 18 — Triggers
+-------------------------------------------------------------------------------
+18(a) -- Audit trigger for updates/deletes on clientmstr (row-level example, Oracle)
+-- Audit table
+CREATE TABLE audit_trade_old AS SELECT * FROM clientmstr WHERE 1=0;
+-- Row-level BEFORE DELETE trigger to store old values
+CREATE OR REPLACE TRIGGER trg_clientmstr_delete_row BEFORE DELETE ON clientmstr FOR EACH ROW
+BEGIN
+  INSERT INTO audit_trade_old VALUES(:OLD.*);
+END;
+/
+-- Row-level BEFORE UPDATE trigger to store old values
+CREATE OR REPLACE TRIGGER trg_clientmstr_update_row BEFORE UPDATE ON clientmstr FOR EACH ROW
+BEGIN
+  INSERT INTO audit_trade_old VALUES(:OLD.*);
+END;
+/
+
+-- Statement-level triggers could also log counts or timestamps separately.
+
+18(b) -- BEFORE INSERT or UPDATE on Emp to reject salary less than 50000 and store new values in tracking
+CREATE TABLE Tracking(e_no NUMBER, salary NUMBER, action_date DATE);
+CREATE OR REPLACE TRIGGER trg_emp_salary_check BEFORE INSERT OR UPDATE ON Emp FOR EACH ROW
+BEGIN
+  IF :NEW.salary < 50000 THEN
+    -- store attempted value for audit
+    INSERT INTO Tracking(e_no, salary, action_date) VALUES(:NEW.e_no, :NEW.salary, SYSDATE);
+    RAISE_APPLICATION_ERROR(-20001, 'Salary cannot be less than 50000');
+  END IF;
+END;
+/
+
+-------------------------------------------------------------------------------
+SET 19 — MongoDB DYPIT (Teachers, Students)
+-------------------------------------------------------------------------------
+Assume database DYPIT and collections teachers and students.
+
+-- Sample documents:
+-- teachers: { "Tname":"Praveen", "dno":10, "dname":"COMP", "experience":8, "salary":15000, "date_of_joining": ISODate("2015-06-01") }
+-- students: { "Sname":"xyz", "roll_no":2, "class":"FY" }
+
+1. db.teachers.find().pretty();
+
+2. db.teachers.find({ dname: "computer" }).pretty();
+   -- case-insensitive
+   db.teachers.find({ dname: { $regex: /^computer$/i } }).pretty();
+
+3. db.teachers.find({ dname: { $in: ["computer","IT","e&TC"] } }).pretty();
+
+4. db.teachers.find({ dname: { $in: ["computer","IT","e&TC"] }, salary: { $gte: 10000 } }).pretty();
+
+5. db.students.find({ $or: [{ roll_no: 2 }, { Sname: "xyz" }] }).pretty();
+
+6. -- Update experience of teacher 'Praveen' to 10, insert if not exists (upsert)
+   db.teachers.updateOne({ Tname: "Praveen" }, { $set: { experience: 10 } }, { upsert: true });
+
+7. -- Update department of all teachers working in IT to COMP
+   db.teachers.updateMany({ dname: "IT" }, { $set: { dname: "COMP" } });
+
+8. db.teachers.find({}, { Tname: 1, experience: 1, _id: 0 });
+
+9. -- Using save() (deprecated in modern drivers, but for shell)
+   db.departments.save({ dno: 99, dname: "NEW_DEPT" });
+
+10. db.teachers.save({ Tname: "Rajesh", dno: 2, dname: "IT", experience: 5, salary: 12000, date_of_joining: new Date() });
+
+11. db.teachers.deleteMany({ dname: "IT" });
+
+12. db.teachers.find().sort({_id:1}).limit(3).pretty();
+
+-------------------------------------------------------------------------------
+SET 20 — MongoDB variation (similar to 19)
+-------------------------------------------------------------------------------
+1. db.teachers.find().limit(2).pretty();
+2. db.teachers.find({ dname: "computer" }).pretty();
+3. db.teachers.find({ dname: { $in: ["computer","IT","e&TC"] } }).pretty();
+4. db.teachers.find({ dname: { $in: ["computer","IT","e&TC"] }, salary: { $gte: 25000 } }).pretty();
+5. db.students.find({ $or: [{ roll_no: 25 }, { Sname: "xyz" }] }).pretty();
+6. db.teachers.updateOne({ Tname: "Praveen" }, { $set: { experience: 10 } }, { upsert: true });
+7. db.teachers.updateMany({ dname: "IT" }, { $set: { dname: "COMP" } });
+8. db.teachers.find({}, { Tname:1, experience:1, _id:0 }).pretty();
+9. db.departments.save({ dno: 101, dname: "DeptX" });
+10. db.teachers.deleteMany({ dname: "IT" });
+11. db.teachers.find().sort({_id:1}).limit(5).pretty();
+
+-------------------------------------------------------------------------------
+SET 21 — MongoDB (avg, min, max, totals)
+-------------------------------------------------------------------------------
+1. db.teachers.find().pretty();
+2. db.teachers.aggregate([{ $match: { dname: "computer" } }, { $group: { _id: "$dname", avgSalary: { $avg: "$salary" } } }]);
+3. db.teachers.aggregate([{ $match: { dname: "e&TC" } }, { $group: { _id: "$dname", minSalary: { $min: "$salary" }, maxSalary: { $max: "$salary" } } }]);
+4. db.teachers.find({ dname: { $in: ["computer","IT","e&TC"] }, salary: { $gte: 10000 } }).pretty();
+5. db.students.find({ $or: [{ roll_no: 2 }, { Sname: "xyz" }] }).pretty();
+6. db.teachers.updateOne({ Tname: "Praveen" }, { $set: { experience: 10 } }, { upsert: true });
+7. db.teachers.updateMany({ dname: "IT" }, { $set: { dname: "COMP" } });
+8. db.teachers.find({}, { Tname:1, experience:1, _id:0 }).pretty();
+9. db.departments.save({ dno: 201, dname: "DeptY" });
+10. db.teachers.aggregate([{ $group: { _id: null, totalSalary: { $sum: "$salary" } } }]);
+
+-------------------------------------------------------------------------------
+SET 22 — MongoDB aggregation / indexes
+-------------------------------------------------------------------------------
+1. -- Department-wise average salary
+   db.teachers.aggregate([{ $group: { _id: "$dname", avgSalary: { $avg: "$salary" } } }]);
+
+2. -- Number of employees in each department
+   db.teachers.aggregate([{ $group: { _id: "$dname", count: { $sum: 1 } } }]);
+
+3. -- Departments having total salary >= 50000
+   db.teachers.aggregate([{ $group: { _id: "$dname", totalSalary: { $sum: "$salary" } } }, { $match: { totalSalary: { $gte: 50000 } } }]);
+
+4. -- Use aggregation operators: $max, $min, $avg, $sum, $push, etc.
+   db.teachers.aggregate([{ $group: { _id: "$dname", maxSalary: { $max: "$salary" }, minSalary: { $min: "$salary" }, avgSalary: { $avg: "$salary" } } }]);
+
+5. -- Create unique index
+   db.teachers.createIndex({ Tname: 1 }, { unique: true });
+
+6. -- Create compound index
+   db.teachers.createIndex({ dname: 1, salary: -1 });
+
+7. -- Show indexes in DB
+   db.getCollectionNames().forEach(function(coll){ print(coll); printjson(db.getCollection(coll).getIndexes()); });
+
+8. -- Show indexes for a collection
+   db.teachers.getIndexes();
+
+-------------------------------------------------------------------------------
+SET 23 — MongoDB indexes and zip.json
+-------------------------------------------------------------------------------
+1. -- Import zip.json (shell / mongoimport)
+   -- mongoimport --db DYPIT --collection zips --file zip.json --jsonArray
+
+2. -- Create single field, composite, multikey indexes
+   db.zips.createIndex({ city: 1 });
+   db.zips.createIndex({ state: 1, city: 1 });
+   -- multikey example if an array field exists:
+   db.zips.createIndex({ loc: "2dsphere" });
+
+3. -- Queries and analysis
+   -- Display all cities having population above 1600
+   db.zips.aggregate([{ $match: { pop: { $gt: 1600 } } }, { $group: { _id: "$city", totalPop: { $sum: "$pop" } } }]);
+   -- Display all cities in state "KS"
+   db.zips.find({ state: "KS" }).pretty();
+   -- Display location of city "TIMKEN"
+   db.zips.find({ city: "TIMKEN" }, { loc: 1, _id: 0 }).pretty();
+
+-------------------------------------------------------------------------------
+SET 24 — MongoDB 'games' collection design and queries
+-------------------------------------------------------------------------------
+1. db.games.insertMany([
+     { name: "Game A", gametype: "Action", rating: 85 },
+     { name: "Game B", gametype: "Puzzle", rating: 90 },
+     { name: "Game C", gametype: "RPG", rating: 92 },
+     { name: "Game D", gametype: "Strategy", rating: 78 },
+     { name: "Game E", gametype: "Racing", rating: 88 }
+   ]);
+
+2. -- Return all games
+   db.games.find().pretty();
+
+3. -- Return top 3 highest rated games
+   db.games.find().sort({ rating: -1 }).limit(3).pretty();
+
+4. -- Update two favorite games to have achievements
+   db.games.updateMany({ name: { $in: ["Game A", "Game C"] } }, { $set: { achievements: ["Game Master", "Speed Demon"] } });
+
+5. -- Return games that have both achievements
+   db.games.find({ achievements: { $all: ["Game Master", "Speed Demon"] } }).pretty();
+
+6. -- Return only games that have achievements
+   db.games.find({ achievements: { $exists: true, $ne: [] } }).pretty();
+
+-------------------------------------------------------------------------------
+SET 25 — MongoDB MapReduce on given collection (users/hobbies)
+-------------------------------------------------------------------------------
+Assume collection users with documents like:
+{ id: 0, name: "Leanne Flinn", email: "...", work: "Unilogic", age: 27, gender: "Male", Salary: 16660, hobbies: "Acrobatics,Photography,Papier-Mache" }
+
+1. -- Count of Males and Females (MapReduce)
+   var mapGender = function() { emit(this.gender, 1); };
+   var reduceGender = function(key, values) { return Array.sum(values); };
+   db.users.mapReduce(mapGender, reduceGender, { out: "gender_count" });
+   db.gender_count.find().pretty();
+
+2. -- Count number of users in each hobby (split comma-separated hobbies into multiple)
+   var mapHobby = function() {
+     if (this.hobbies) {
+       var h = this.hobbies.split(',');
+       for (var i = 0; i < h.length; i++) { emit(h[i].trim(), 1); }
+     }
+   };
+   var reduceHobby = function(key, values) { return Array.sum(values); };
+   db.users.mapReduce(mapHobby, reduceHobby, { out: "hobby_count" });
+   db.hobby_count.find().pretty();
+
+-------------------------------------------------------------------------------
+SET 26 — MongoDB MapReduce (zip.json total population per state)
+-------------------------------------------------------------------------------
+-- After importing zip.json into zips collection:
+var mapState = function() { emit(this.state, this.pop); };
+var reduceState = function(key, values) { return Array.sum(values); };
+db.zips.mapReduce(mapState, reduceState, { out: "state_pop" });
+db.state_pop.find().sort({ value: -1 }).pretty();
+
+-------------------------------------------------------------------------------
+SET 27 — Library MapReduce (books small vs big)
+-------------------------------------------------------------------------------
+-- Collection: books with field 'pages'
+-- MapReduce to classify small vs big by pages threshold 250
+var mapBooks = function() {
+  var cat = (this.pages && this.pages < 250) ? 'small' : 'big';
+  emit(cat, 1);
+};
+var reduceBooks = function(key, values) { return Array.sum(values); };
+db.books.mapReduce(mapBooks, reduceBooks, { out: "book_size_count" });
+db.book_size_count.find().pretty();
+
+-------------------------------------------------------------------------------
+Notes & Assumptions
+-------------------------------------------------------------------------------
+• Date formats used are ISO (YYYY-MM-DD). Adapt to your RDBMS date literal conventions. 
+• Some PDF questions repeated similar hotel/room/booking exercises; answers provided in general SQL that will work on most RDBMS with minimal tweaks.
+• PL/SQL blocks are Oracle-style. For MySQL, replace DBMS_OUTPUT and delimiters appropriately or use stored procedures/functions form for MySQL.
+• MongoDB shell commands assume you are using the mongo shell or a compatible driver; adapt for current MongoDB shell (mongosh) if needed.
+• MapReduce is supported but slower than aggregation pipeline in modern MongoDB versions; consider aggregation when possible.
+
+If you want this as a downloadable file, it's been saved to /mnt/data/All_DBMS_Practical_Answers.txt

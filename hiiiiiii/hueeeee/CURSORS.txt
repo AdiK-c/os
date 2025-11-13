@@ -1,0 +1,84 @@
+-- ================================================
+-- STEP 1 : CREATE TABLES
+-- ================================================
+-- Old Roll Call Table
+CREATE TABLE O_RollCall (
+    RollNo NUMBER PRIMARY KEY,
+    StudentName VARCHAR2(50),
+    Department VARCHAR2(30)
+);
+
+-- New Roll Call Table
+CREATE TABLE N_RollCall (
+    RollNo NUMBER,
+    StudentName VARCHAR2(50),
+    Department VARCHAR2(30)
+);
+
+-- ================================================
+-- STEP 2 : INSERT SAMPLE DATA
+-- ================================================
+-- Old Roll Call already has some students
+INSERT INTO O_RollCall VALUES (1, 'Asha', 'Computer');
+INSERT INTO O_RollCall VALUES (2, 'Rohit', 'IT');
+INSERT INTO O_RollCall VALUES (3, 'Sneha', 'ENTC');
+
+-- New Roll Call has new and some duplicate students
+INSERT INTO N_RollCall VALUES (2, 'Rohit', 'IT');        -- duplicate
+INSERT INTO N_RollCall VALUES (3, 'Sneha', 'ENTC');      -- duplicate
+INSERT INTO N_RollCall VALUES (4, 'Tanish', 'Computer'); -- new
+INSERT INTO N_RollCall VALUES (5, 'Avani', 'IT');        -- new
+
+COMMIT;
+
+-- ================================================
+-- STEP 3 : PARAMETERIZED CURSOR PL/SQL BLOCK
+-- ================================================
+SET SERVEROUTPUT ON;
+DECLARE
+    v_rollno   N_RollCall.RollNo%TYPE;
+    v_name     N_RollCall.StudentName%TYPE;
+    v_dept     N_RollCall.Department%TYPE;
+
+    -- Parameterized Cursor : fetch students by department
+    CURSOR c_merge(p_dept N_RollCall.Department%TYPE) IS
+        SELECT RollNo, StudentName, Department
+        FROM N_RollCall
+        WHERE Department = p_dept;
+
+BEGIN
+    -- For each unique department in new table
+    FOR dept_rec IN (SELECT DISTINCT Department FROM N_RollCall) LOOP
+        OPEN c_merge(dept_rec.Department);
+
+        LOOP
+            FETCH c_merge INTO v_rollno, v_name, v_dept;
+            EXIT WHEN c_merge%NOTFOUND;
+
+            -- Check if the record already exists in old table
+            DECLARE
+                v_count NUMBER;
+            BEGIN
+                SELECT COUNT(*) INTO v_count
+                FROM O_RollCall
+                WHERE RollNo = v_rollno;
+
+                -- If not present, insert into O_RollCall
+                IF v_count = 0 THEN
+                    INSERT INTO O_RollCall (RollNo, StudentName, Department)
+                    VALUES (v_rollno, v_name, v_dept);
+                END IF;
+            END;
+        END LOOP;
+
+        CLOSE c_merge;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Data merged successfully without duplicates.');
+END;
+/
+
+-- ================================================
+-- STEP 4 : VERIFY MERGED DATA
+-- ================================================
+SELECT * FROM O_RollCall;

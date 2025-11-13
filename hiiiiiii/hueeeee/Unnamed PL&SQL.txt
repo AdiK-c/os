@@ -1,0 +1,80 @@
+-- Create Borrower table
+CREATE TABLE Borrower (
+    Roll_no INT PRIMARY KEY,
+    Name VARCHAR(50),
+    DateofIssue DATE,
+    NameofBook VARCHAR(50),
+    Status CHAR(1)
+);
+
+-- Create Fine table
+CREATE TABLE Fine (
+    Roll_no INT,
+    Date DATE,
+    Amt NUMBER(10,2)
+);
+
+-- Insert sample data
+INSERT INTO Borrower VALUES (1, 'Prayukti', TO_DATE('2025-10-10', 'YYYY-MM-DD'), 'DBMS', 'I');
+INSERT INTO Borrower VALUES (2, 'Akshara', TO_DATE('2025-10-20', 'YYYY-MM-DD'), 'CN', 'I');
+INSERT INTO Borrower VALUES (3, 'Siddhi', TO_DATE('2025-11-01', 'YYYY-MM-DD'), 'OS', 'I');
+
+-- Unnamed PL/SQL block
+DECLARE
+    v_roll Borrower.Roll_no%TYPE;
+    v_book Borrower.NameofBook%TYPE;
+    v_dateofissue Borrower.DateofIssue%TYPE;
+    v_days NUMBER;
+    v_fine NUMBER(10,2);
+    v_status Borrower.Status%TYPE;
+    no_record EXCEPTION;  -- user-defined exception
+BEGIN
+    -- Accept input (in real system, use & for substitution variables)
+    v_roll := &Roll_no;
+    v_book := '&NameofBook';
+
+    -- Fetch Date of Issue and Status for given Roll_no and Book
+    SELECT DateofIssue, Status INTO v_dateofissue, v_status
+    FROM Borrower
+    WHERE Roll_no = v_roll AND NameofBook = v_book;
+
+    -- Calculate number of days difference
+    v_days := TRUNC(SYSDATE - v_dateofissue);
+
+    -- Check if record exists and status is 'I'
+    IF v_status = 'I' THEN
+        -- Control Structure: IF-ELSIF-ELSE
+        IF v_days BETWEEN 15 AND 30 THEN
+            v_fine := v_days * 5;
+        ELSIF v_days > 30 THEN
+            v_fine := v_days * 50;
+        ELSE
+            v_fine := 0;
+        END IF;
+
+        -- Update status from I to R (Issued → Returned)
+        UPDATE Borrower
+        SET Status = 'R'
+        WHERE Roll_no = v_roll AND NameofBook = v_book;
+
+        -- If fine applicable, insert record in Fine table
+        IF v_fine > 0 THEN
+            INSERT INTO Fine VALUES (v_roll, SYSDATE, v_fine);
+            DBMS_OUTPUT.PUT_LINE('Fine of Rs ' || v_fine || ' added for Roll No: ' || v_roll);
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('No fine applicable for Roll No: ' || v_roll);
+        END IF;
+
+    ELSE
+        RAISE no_record;  -- Book already returned or invalid
+    END IF;
+
+EXCEPTION
+    WHEN no_data_found THEN
+        DBMS_OUTPUT.PUT_LINE('Error: No such record found for Roll No or Book Name.');
+    WHEN no_record THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Book already returned or invalid details.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Unexpected error: ' || SQLERRM);
+END;
+/

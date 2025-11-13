@@ -1,0 +1,98 @@
+-- ================================================
+-- STEP 1 : CREATE MAIN TABLE
+-- ================================================
+CREATE TABLE Library (
+    Book_ID NUMBER PRIMARY KEY,
+    Book_Name VARCHAR2(100),
+    Author_Name VARCHAR2(50),
+    Price NUMBER
+);
+
+-- ================================================
+-- STEP 2 : CREATE AUDIT TABLE
+-- ================================================
+CREATE TABLE Library_Audit (
+    Book_ID NUMBER,
+    Book_Name VARCHAR2(100),
+    Author_Name VARCHAR2(50),
+    Price NUMBER,
+    Operation_Type VARCHAR2(15),
+    Operation_Time DATE,
+    Performed_By VARCHAR2(30)
+);
+
+-- ================================================
+-- STEP 3 : INSERT SAMPLE DATA
+-- ================================================
+INSERT INTO Library VALUES (1, 'DBMS Concepts', 'Korth', 500);
+INSERT INTO Library VALUES (2, 'Let Us C', 'Yashwant Kanetkar', 350);
+INSERT INTO Library VALUES (3, 'Operating System', 'Galvin', 600);
+COMMIT;
+
+-- ================================================
+-- STEP 4 : STATEMENT LEVEL TRIGGER (BEFORE)
+-- ================================================
+CREATE OR REPLACE TRIGGER trg_Library_Before_Stmt
+BEFORE UPDATE OR DELETE
+ON Library
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('*** Operation about to start on Library table ***');
+END;
+/
+
+-- ================================================
+-- STEP 5 : ROW LEVEL TRIGGER (AFTER)
+-- ================================================
+CREATE OR REPLACE TRIGGER trg_Library_After_Row
+AFTER UPDATE OR DELETE
+ON Library
+FOR EACH ROW
+BEGIN
+    INSERT INTO Library_Audit
+    VALUES (
+        :OLD.Book_ID,
+        :OLD.Book_Name,
+        :OLD.Author_Name,
+        :OLD.Price,
+        CASE
+            WHEN UPDATING THEN 'UPDATED'
+            WHEN DELETING THEN 'DELETED'
+        END,
+        SYSDATE,
+        USER
+    );
+END;
+/
+
+-- ================================================
+-- STEP 6 : STATEMENT LEVEL TRIGGER (AFTER)
+-- ================================================
+CREATE OR REPLACE TRIGGER trg_Library_After_Stmt
+AFTER UPDATE OR DELETE
+ON Library
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('*** Operation completed successfully on Library table ***');
+END;
+/
+
+-- ================================================
+-- STEP 7 : TEST THE TRIGGERS
+-- ================================================
+SET SERVEROUTPUT ON;
+
+-- Perform UPDATE
+UPDATE Library
+SET Price = 550
+WHERE Book_ID = 1;
+
+-- Perform DELETE
+DELETE FROM Library
+WHERE Book_ID = 2;
+
+COMMIT;
+
+-- ================================================
+-- STEP 8 : CHECK RESULTS
+-- ================================================
+SELECT * FROM Library;
+SELECT * FROM Library_Audit;

@@ -1,0 +1,99 @@
+-- ========================================
+-- DATABASE : CollegeDB
+-- Topic : Joins, Subquery, and Views
+-- ========================================
+
+-- 1. Create Table : Department
+CREATE TABLE Department (
+    Dept_ID INT PRIMARY KEY,
+    Dept_Name VARCHAR(50),
+    Location VARCHAR(50)
+);
+
+-- 2. Create Table : Student
+CREATE TABLE Student (
+    Roll_No INT PRIMARY KEY,
+    Name VARCHAR(50),
+    Dept_ID INT,
+    Marks DECIMAL(5,2),
+    Age INT,
+    FOREIGN KEY (Dept_ID) REFERENCES Department(Dept_ID)
+);
+
+-- ========================================
+-- INSERTING DATA
+-- ========================================
+
+INSERT INTO Department VALUES (1, 'Computer', 'Pune');
+INSERT INTO Department VALUES (2, 'Mechanical', 'Mumbai');
+INSERT INTO Department VALUES (3, 'Civil', 'Nashik');
+
+INSERT INTO Student VALUES (101, 'Prayukti', 1, 89.5, 20);
+INSERT INTO Student VALUES (102, 'Akshara', 1, 76.0, 19);
+INSERT INTO Student VALUES (103, 'Siddhi', 2, 92.3, 21);
+INSERT INTO Student VALUES (104, 'Ovi', 3, 65.5, 22);
+INSERT INTO Student VALUES (105, 'Anandi', NULL, 72.0, 20);
+
+-- ========================================
+-- DML QUERIES (10 Examples)
+-- ========================================
+
+-- Q1. INNER JOIN: Show students with their department names
+SELECT S.Name, D.Dept_Name
+FROM Student S
+INNER JOIN Department D ON S.Dept_ID = D.Dept_ID;
+
+-- Q2. LEFT JOIN: Show all students even if they have no department
+SELECT S.Name, D.Dept_Name
+FROM Student S
+LEFT JOIN Department D ON S.Dept_ID = D.Dept_ID;
+
+-- Q3. RIGHT JOIN: Show all departments even if no student is in them
+SELECT S.Name, D.Dept_Name
+FROM Student S
+RIGHT JOIN Department D ON S.Dept_ID = D.Dept_ID;
+
+-- Q4. CROSS JOIN: Show all combinations of student and department
+SELECT S.Name, D.Dept_Name
+FROM Student S
+CROSS JOIN Department D;
+
+-- Q5. SUBQUERY: Show students who have marks greater than average marks
+SELECT Name, Marks
+FROM Student
+WHERE Marks > (SELECT AVG(Marks) FROM Student);
+
+-- Q6. SUBQUERY with IN: Show students who belong to 'Computer' or 'Mechanical' dept
+SELECT Name
+FROM Student
+WHERE Dept_ID IN (
+    SELECT Dept_ID FROM Department
+    WHERE Dept_Name IN ('Computer', 'Mechanical')
+);
+
+-- Q7. VIEW Creation: Create a view to display high scorers (marks > 80)
+CREATE VIEW HighScorers AS
+SELECT Name, Marks, Dept_ID
+FROM Student
+WHERE Marks > 80;
+
+-- Q8. SELECT from VIEW
+SELECT * FROM HighScorers;
+
+-- Q9. Complex VIEW with JOIN: Student and Department info
+CREATE VIEW StudentDetails AS
+SELECT S.Name, S.Marks, D.Dept_Name, D.Location
+FROM Student S
+LEFT JOIN Department D ON S.Dept_ID = D.Dept_ID;
+
+SELECT * FROM StudentDetails;
+
+-- Q10. SUBQUERY in UPDATE: Increase marks of students below average by 5%
+UPDATE Student
+SET Marks = Marks * 1.05
+WHERE Marks < (SELECT AVG(Marks) FROM Student);
+
+-- ========================================
+-- CHECK UPDATED DATA
+-- ========================================
+SELECT * FROM Student;
